@@ -48,11 +48,15 @@ if [[ -d "$DIFFUSERS_DIR/.git" ]]; then
   git -C "$DIFFUSERS_DIR" checkout -q "$DIFFUSERS_COMMIT" 2>/dev/null || true
   pip install -e "$DIFFUSERS_DIR"
 else
-  echo "  vendored clone missing -- cloning (needs github; enabling academic proxy)"
+  echo "  vendored clone missing -- cloning (China mirror first, GitHub fallback)"
   mkdir -p "$TINY_H3_REF"
-  # shellcheck disable=SC1091
-  source /etc/network_turbo 2>/dev/null || true
-  git clone https://github.com/huggingface/diffusers.git "$DIFFUSERS_DIR"
+  if ! git clone "${TINY_H3_GIT_MIRROR:-https://gitclone.com/github.com/huggingface/diffusers.git}" "$DIFFUSERS_DIR"; then
+    rm -rf "$DIFFUSERS_DIR"
+    echo "  mirror failed -- falling back to github (academic proxy)"
+    # shellcheck disable=SC1091
+    source /etc/network_turbo 2>/dev/null || true
+    git clone https://github.com/huggingface/diffusers.git "$DIFFUSERS_DIR"
+  fi
   git -C "$DIFFUSERS_DIR" checkout -q "$DIFFUSERS_COMMIT"
   pip install -e "$DIFFUSERS_DIR"
 fi

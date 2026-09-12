@@ -7,8 +7,9 @@ hf_cache/
 *.wav
 *.npz
 *.png
-# ...except repository assets (demo stills etc.)
+# ...except repository assets (demo videos, loss curve etc.)
 !assets/**/*.png
+!assets/**/*.mp4
 
 # model weights that could stray outside runs/
 *.safetensors
