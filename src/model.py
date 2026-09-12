@@ -87,7 +87,9 @@ class ModelSpec:
             "in_channels": self.in_channels,
             "audio_in_channels": self.audio_in_channels,
             "patch_size": list(self.patch_size),
-            "preset_kwargs": TINY_H3_PRESETS[self.preset],
+            # resolve (not table lookup): a JSON-config preset must serialize its actual
+            # kwargs so the checkpoint stays self-contained even without the config file.
+            "preset_kwargs": resolve_preset_kwargs(self.preset),
             **self.extra,
         }
 
@@ -110,19 +112,36 @@ class ModelSpec:
         )
 
 
+def resolve_preset_kwargs(preset: str) -> dict:
+    """Preset name -> ``MiniMaxH3Transformer3DModel`` constructor kwargs.
+
+    Two ways to configure a model size:
+
+    * a built-in preset name (``tiny_h3_5090`` etc.); or
+    * a path to a JSON config file (e.g. ``configs/tiny_h3_xl.json``), which trains any
+      size without touching the source.  The file holds the flat constructor kwargs;
+      keys starting with ``_`` are annotations and are dropped.
+    """
+    if preset.endswith(".json") or os.path.exists(preset):
+        with open(preset, encoding="utf-8") as f:
+            cfg = json.load(f)
+        kwargs = cfg.get("preset_kwargs", cfg)
+        return {k: v for k, v in kwargs.items() if not k.startswith("_")}
+    if preset not in TINY_H3_PRESETS:
+        raise KeyError(f"unknown preset {preset!r}; available: {sorted(TINY_H3_PRESETS)} or a configs/*.json path")
+    return dict(TINY_H3_PRESETS[preset])
+
+
 def build_dit(spec: ModelSpec, dtype: torch.dtype = torch.float32) -> "torch.nn.Module":
     """Instantiate the tiny H3 transformer."""
     from diffusers import MiniMaxH3Transformer3DModel
 
-    if spec.preset not in TINY_H3_PRESETS:
-        raise KeyError(f"unknown preset {spec.preset!r}; available: {sorted(TINY_H3_PRESETS)}")
-    kwargs = dict(TINY_H3_PRESETS[spec.preset])
     model = MiniMaxH3Transformer3DModel(
         in_channels=spec.in_channels,
         audio_in_channels=spec.audio_in_channels,
         patch_size=tuple(spec.patch_size),
         text_dim=spec.text_dim,
-        **kwargs,
+        **resolve_preset_kwargs(spec.preset),
     )
     return model.to(dtype=dtype)
 
@@ -227,6 +246,7 @@ def save_checkpoint(
     dit.save_pretrained(out_dir, safe_serialization=True)
     meta = spec.to_dict()
     meta["step"] = step
+    meta["parameters"] = count_parameters(dit)
     if extra:
         meta.update(extra)
     with open(os.path.join(out_dir, "tiny_h3_meta.json"), "w", encoding="utf-8") as f:

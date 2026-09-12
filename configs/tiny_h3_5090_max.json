@@ -1,0 +1,14 @@
+{
+  "_description": "Tiny-H3 'tiny_h3_5090_max' preset -- 285M, the largest size that still fits comfortably on one 5090",
+  "_parameters_M": 386.5,
+  "_usage": "python -m tiny_h3.train.train_full --preset configs/tiny_h3_5090_max.json ...",
+  "hidden_size": 1024,
+  "num_layers": 16,
+  "num_refiner_layers": 2,
+  "ffn_dim": 2816,
+  "num_attention_heads": 16,
+  "attention_head_dim": 64,
+  "time_embed_hidden_dim": 2048,
+  "time_embed_dim": 512,
+  "rope_freq_dim": 8
+}

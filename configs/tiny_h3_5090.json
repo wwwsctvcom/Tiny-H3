@@ -1,0 +1,14 @@
+{
+  "_description": "Tiny-H3 'tiny_h3_5090' preset -- default single-RTX-5090 configuration, 256x256 / 22 frames",
+  "_parameters_M": 63.7,
+  "_usage": "python -m tiny_h3.train.train_full --preset configs/tiny_h3_5090.json ...",
+  "hidden_size": 512,
+  "num_layers": 10,
+  "num_refiner_layers": 2,
+  "ffn_dim": 1408,
+  "num_attention_heads": 8,
+  "attention_head_dim": 64,
+  "time_embed_hidden_dim": 1024,
+  "time_embed_dim": 256,
+  "rope_freq_dim": 8
+}

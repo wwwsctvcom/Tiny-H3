@@ -1,0 +1,14 @@
+{
+  "_description": "Tiny-H3 'smoke' preset -- CPU smoke tests, 64x64 / 22 frames",
+  "_parameters_M": 9.8,
+  "_usage": "python -m tiny_h3.train.train_full --preset configs/smoke.json ...",
+  "hidden_size": 256,
+  "num_layers": 6,
+  "num_refiner_layers": 1,
+  "ffn_dim": 704,
+  "num_attention_heads": 4,
+  "attention_head_dim": 64,
+  "time_embed_hidden_dim": 512,
+  "time_embed_dim": 128,
+  "rope_freq_dim": 8
+}
