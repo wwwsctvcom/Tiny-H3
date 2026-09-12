@@ -6,7 +6,7 @@ One ``.npz`` per clip with everything the DiT trainer needs:
 ===============  ==========================================================
 ``video_latents``  ``(24, 5n+2, H/16, W/16)`` float16, H3-normalized
 ``audio_latents``  ``(2, 32, T)`` float16, H3-normalized (posterior mean)
-``text_embed``     ``(text_tokens, 512)`` float32 from the frozen T5
+``text_embed``     ``(text_tokens, text_dim)`` float32 from the frozen text encoder
 ``prompt``         the prompt string
 ===============  ==========================================================
 

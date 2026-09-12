@@ -10,7 +10,7 @@ Presets (parameter counts are approximate, text encoder excluded)::
     tiny_h3_5090 ~44M  the default single-5090 configuration, 256x256 / 22 frames
     tiny_h3_xl   ~110M 512x512 / 39 frames if you have the patience
 
-Text conditioning replaces H3's 66 GB Qwen3-VL-8B with a frozen T5 (``t5-small``, 512-dim).
+Text conditioning replaces H3's 66 GB Qwen3-VL-8B with a frozen small Qwen3.
 Prompts are padded to a fixed token count so every sample in a batch shares one packed
 layout -- the transformer's batch axis is a pure replication axis.
 """
@@ -32,8 +32,7 @@ DEFAULT_TEXT_TOKENS = 48
 # Small Qwen options, all frozen, all fine to run on one 5090:
 #   Qwen/Qwen3-0.6B      1024-dim, 28 layers  (default; closest to official H3's Qwen3-VL lineage)
 #   Qwen/Qwen2.5-0.5B     896-dim, 24 layers
-#   t5-small              512-dim, 12 layers  (lightest; handy for CPU smoke tests)
-TEXT_ENCODER_CHOICES = ("Qwen/Qwen3-0.6B", "Qwen/Qwen2.5-0.5B", "t5-small", "t5-v1_1-small")
+TEXT_ENCODER_CHOICES = ("Qwen/Qwen3-0.6B", "Qwen/Qwen2.5-0.5B")
 
 TINY_H3_PRESETS: dict[str, dict] = {
     "smoke": dict(
@@ -144,7 +143,7 @@ class TextConditioner:
 
     * decoder-only (Qwen2/3): ``AutoModel`` returns the final hidden state, which is what the
       DiT's ``context_embedder`` consumes;
-    * encoder-only (T5): ``T5EncoderModel`` last hidden state.
+    * encoder-only models: last hidden state.
 
     Prompts are padded to ``max_tokens`` and the padding rows are zeroed, because the packed
     sequence has no attention mask and pad rows must be inert.

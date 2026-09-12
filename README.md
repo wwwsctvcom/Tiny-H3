@@ -1,16 +1,39 @@
 # Tiny-H3
 
-**A text-to-audio-video (T2AV) model that works like [MiniMax-H3](https://huggingface.co/MiniMaxAI/MiniMax-H3) — the full pipeline, four training modes, trainable on a single RTX 5090.**
+**A complete, minimal MiniMax-H3 project: the full text-to-audio-video pipeline — four training modes and inference — trainable on a single RTX 5090.**
 
-MiniMax-H3 packs text, video and audio into one sequence and denoises them together with an omni-modal diffusion transformer. Tiny-H3 reproduces every part of that pipeline: the officially released video/audio VAEs, the same scheduler, the same packed-sequence layout and flow convention — all the way to a **playable MP4 with synchronized sound**. The difference is scale: the official DiT has 24.4B parameters (multi-node required), while Tiny-H3 shrinks the DiT to ~64M so that **a single RTX 5090 (32 GB) covers the whole path from data to final clips**.
+MiniMax-H3 packs text, video and audio into one sequence and denoises them together with an omni-modal diffusion transformer. Tiny-H3 reproduces every stage of that pipeline end to end: the officially released video/audio VAEs, the same scheduler, the same packed-sequence layout and flow convention — from raw data all the way to a **playable MP4 with synchronized sound**. The difference is scale: the official DiT has 24.4B parameters (multi-node required), while Tiny-H3 shrinks the DiT to ~64M so that **one RTX 5090 (32 GB) covers the whole path from data to final clips**.
 
 | | Official MiniMax-H3 | Tiny-H3 |
 |---|---|---|
 | DiT | 24.4B (hidden 5376 × 50 layers) | **63.7M** (512 × 10 layers; 140M / 285M presets also available) |
-| Text encoder | Qwen3-VL-8B (66 GB) | frozen **Qwen3-0.6B** (or t5-small) |
+| Text encoder | Qwen3-VL-8B (66 GB) | frozen **Qwen3-0.6B** |
 | Video / audio VAE | official | **official, frozen** |
 | Latent space / packed sequence / scheduler / flow sign | — | **identical to the official model** |
 | Training infrastructure | SGLang + Ray + multi-node FSDP2 | single-process PyTorch, one GPU |
+
+## Pipeline
+
+How a prompt becomes a video with sound — and how training data flows through the same components:
+
+```mermaid
+flowchart LR
+    prompt["text prompt"] -->|"frozen Qwen3-0.6B"| enc["text embeddings<br/>48 x 1024"]
+    noise["gaussian noise<br/>video 24x7x16x16<br/>audio 2x32x37"] --> dit
+    enc --> dit["Tiny-H3 DiT - 63.7M<br/>packed sequence: text | audio | video<br/>predicts v = x0 - noise"]
+    dit -->|"N Euler steps"| lat["denoised latents"]
+    lat --> dec["official H3 VAE decoders (frozen)"]
+    dec --> mp4["MP4<br/>H.264 video + AAC stereo"]
+
+    clips["training clips<br/>256x256, 22 frames, 32 kHz stereo"] -->|"official H3 VAE encoders (frozen)"| cache["latent cache"]
+    cache -->|"x0 + noise sigma,<br/>target v = x0 - eps"| dit
+
+    style dit fill:#eef4ff
+    style mp4 fill:#eef9ee
+```
+
+- **Inference (top)**: the prompt is encoded once, then the DiT iteratively denoises gaussian noise over a packed sequence of text, audio and video rows; the denoised latents are decoded by the official VAEs into a playable MP4.
+- **Training (bottom)**: real clips are encoded once into latents by the same official VAE encoders; the DiT learns to predict `v = x0 - noise` at random noise levels with a single flow-matching loss.
 
 ---
 
@@ -51,7 +74,7 @@ Prerequisites: one NVIDIA GPU, Python 3.10+, ~60 GB disk. No ffmpeg install need
 ### 1. Clone
 
 ```bash
-git clone <this repo> tiny-h3 && cd tiny-h3
+git clone https://github.com/wwwsctvcom/Tiny-H3.git tiny-h3 && cd tiny-h3
 ```
 
 ### 2. Environment (China mirrors)
@@ -74,8 +97,7 @@ bash scripts/download_assets.sh
 | Component | Size | Purpose |
 |---|---|---|
 | H3 video VAE + audio VAE | 11 GB | encode training data, decode generated clips |
-| Qwen/Qwen3-0.6B | 1.2 GB | frozen text encoder (default) |
-| t5-small | 240 MB | lightweight alternative encoder |
+| Qwen/Qwen3-0.6B | 1.2 GB | frozen text encoder |
 
 ### 4. Prepare data
 
@@ -94,21 +116,25 @@ python -m tiny_h3.train.train_full --latents $TINY_H3_DATA/synth/latents --out r
 
 ~0.6 s/step on a 5090 (4000 steps ≈ 40 min). Loss is printed live and written to `runs/full/metrics.jsonl`; a diffusers-format checkpoint is saved every 500 steps.
 
-### 6. Generate
+### 6. Inference
+
+One prompt, one MP4 — every pipeline stage printed step by step:
+
+```bash
+python tools/inference.py --checkpoint runs/full/final \
+  --prompt "a red circle bouncing on a dark background, with rhythmic thumps" \
+  --out outputs/inference
+```
+
+Repeat `--prompt` to render several clips in one run; `--steps` controls denoising quality (default 24), `--seed` controls reproducibility.
+
+Batch generation with the four preset prompts:
 
 ```bash
 bash scripts/generate_demo.sh runs/full/final
 ```
 
-Output is standard MP4 (H.264 + AAC stereo). Custom prompts (the training templates are English, so English prompts work best):
-
-```bash
-python -m tiny_h3.pipeline --checkpoint runs/full/final \
-  --prompts "a green square bouncing on a dark background, with rhythmic thumps" \
-  --out outputs/my_first_demo
-```
-
-To verify the whole loop first: `bash scripts/run_all.sh --fast` (a small-scale data → training → generation pass, ~15 min).
+Output is standard MP4 (H.264 + AAC stereo) in both cases. Training templates are English, so English prompts work best. To verify the whole loop first: `bash scripts/run_all.sh --fast` (a small-scale data → training → inference pass, ~15 min).
 
 ---
 
@@ -123,7 +149,7 @@ All modes share the same dataset, the same DiT and one flow-matching loss (`src/
 | FSDP | `torchrun --standalone --nproc_per_node=1 -m tiny_h3.train.train_fsdp --latents ... --out runs/fsdp` | change `nproc_per_node` for multi-GPU; the full wrap/save path also runs on one GPU |
 | Flow-GRPO | `python -m tiny_h3.train.train_flow_grpo --base runs/full/final --prompt-data $TINY_H3_DATA/synth/val.jsonl --out runs/grpo` | RL alignment: sample → decode → offline reward (prompt adherence 0.55 + AV sync 0.30 + quality 0.15) → PPO update |
 
-Every checkpoint plugs straight into `python -m tiny_h3.pipeline --checkpoint <dir>`.
+Every checkpoint plugs straight into inference (`tools/inference.py` or `python -m tiny_h3.pipeline --checkpoint <dir>`).
 
 ---
 
@@ -152,14 +178,14 @@ python tools/fetch_file.py --url <resolve url> --out <local file> --workers 10 -
 
 ## FAQ
 
-**Training loss looks fine but generation is noise?**
+**Inference loss looks fine but generation is noise?**
 Check the flow sign first (H3 predicts `v = x0 - noise`, the opposite of the common convention), then the VAE normalisation. Both live in `src/vae.py` — don't hand-roll them.
 
 **Will it fit in VRAM?**
 DiT training peaks below 1 GB. VAE encode/decode takes ~11 GB (float32), but training uses the latent cache and never touches the VAE.
 
 **Switching the text encoder?**
-`Qwen3-0.6B` (default), `Qwen2.5-0.5B` and `t5-small` are supported. A different encoder changes `text_dim`, so re-run `tools/prepare_latents.py`.
+`Qwen3-0.6B` (default) and `Qwen2.5-0.5B` are supported. A different encoder changes `text_dim`, so re-run `tools/prepare_latents.py`.
 
 ---
 

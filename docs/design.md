@@ -103,7 +103,7 @@ verifier used in the SD3 recipe, and it is what makes the RL loop reproducible.
 | Aspect | Official H3 | Tiny-H3 |
 |---|---|---|
 | DiT | 50 layers, hidden 5376, 24.4 B params | presets: `smoke` 7.3 M / `tiny_h3_5090` 47.6 M / `xl` 140 M / `_5090_max` 285 M |
-| Text encoder | Qwen3-VL-8B (66 GB, layer 50) | `Qwen/Qwen3-0.6B` frozen (1024-dim; Qwen2.5-0.5B or t5-small optional), `--text-layer` can mimic the intermediate-layer read |
+| Text encoder | Qwen3-VL-8B (66 GB, layer 50) | `Qwen/Qwen3-0.6B` frozen (1024-dim; Qwen2.5-0.5B optional), `--text-layer` can mimic the intermediate-layer read |
 | VAEs | official | **official, frozen**; optional decoder-only fine-tune in `tools/finetune_vae.py` |
 | Packing / timesteps / loss sign | official | line-by-line aligned |
 | Sampling | official `MiniMaxH3Scheduler` | inference uses that same diffusers class; RL adds the SDE with log-prob |

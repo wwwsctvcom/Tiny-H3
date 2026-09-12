@@ -2,7 +2,7 @@
 #
 # Every artefact lives on the AutoDL data disk so instance reboots and image swaps keep it:
 #
-#   /root/autodl-tmp/hf_cache      HuggingFace cache (H3 weights, t5-small)
+#   /root/autodl-tmp/hf_cache      HuggingFace cache (H3 weights, Qwen3-0.6B)
 #   /root/autodl-tmp/refs          vendored diffusers (pinned commit) + reference repos
 #   /root/autodl-tmp/tiny-h3       this project
 #   /root/autodl-tmp/datasets      downloaded real datasets (WISA-254, concerts)

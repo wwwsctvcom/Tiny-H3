@@ -41,9 +41,9 @@ H3_REPO = "MiniMaxAI/MiniMax-H3"
 WISA_REPO = "rockdu/WISA-80K-Practical-Dynamics-254"
 CONCERTS_REPO = "alejandroparedeslatorre/concerts_audiovideo_dataset"
 # Frozen conditioners, pulled through the same mirror.  Tiny-H3 defaults to the 0.6 B Qwen3
-# (1024-dim) to stay in the Qwen lineage MiniMax-H3 itself uses; t5-small is the lightweight
+# (1024-dim) to stay in the Qwen lineage MiniMax-H3 itself uses.
 # alternative for CPU smoke tests.
-TEXT_ENCODER_REPOS = ("Qwen/Qwen3-0.6B", "t5-small")
+TEXT_ENCODER_REPOS = ("Qwen/Qwen3-0.6B",)
 TEXT_ENCODER_PATTERNS = ["*.json", "*.txt", "*.safetensors", "tokenizer*", "vocab*", "merges*"]
 
 MODEL_PATTERNS = [

@@ -49,7 +49,7 @@ print("diffusers H3 classes ok")
 PY
 
 if [[ "$SKIP_DOWNLOAD" == "0" ]]; then
-  step "2/6 assets (H3 VAEs, t5-small; skipped automatically when cached)"
+  step "2/6 assets (H3 VAEs, Qwen3-0.6B; skipped automatically when cached)"
   python "$TINY_H3_ROOT/tools/download_assets.py" --group model
 else
   step "2/6 assets (skipped)"
@@ -63,7 +63,7 @@ if [[ "$SKIP_DATA" == "0" ]]; then
     --size "${TINY_H3_DATA_SIZE:-256}" --frames "${TINY_H3_FRAMES:-22}" \
     --workers "${TINY_H3_WORKERS:-8}" --preview
 
-  step "4/6 latent cache (frozen H3 VAEs + t5)"
+  step "4/6 latent cache (frozen H3 VAEs + Qwen3)"
   python "$TINY_H3_ROOT/tools/prepare_latents.py" \
     --data-dir "$TINY_H3_DATA/synth" --out "$TINY_H3_DATA/synth/latents" \
     --device cuda

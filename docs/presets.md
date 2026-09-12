@@ -30,7 +30,7 @@ Official DiT: hidden 5376 / 50 layers / 56×128 heads / FFN 14336 / time-embed 2
 | `tiny_h3_5090_max` | 1024 | 16 | 16×64 | 2816 | **285.1 M** | ~3.2 GiB | 1.17 % |
 
 Frozen components, never trained: video VAE 10.4 GB, audio VAE 0.6 GB, text encoder (Qwen3-0.6B ≈ 1.2 GB
-bf16, t5-small 240 MB). The official alternative, Qwen3-VL-8B, is 66 GB — which is why the conditioner is
+bf16, Qwen3-0.6B 1.2 GB). The official alternative, Qwen3-VL-8B, is 66 GB — which is why the conditioner is
 swapped for a 0.x B Qwen.
 
 > In other words: **VRAM is not the bottleneck**; the 5090 has room for much larger DiTs. Data volume and
