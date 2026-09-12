@@ -29,7 +29,7 @@ import torch
 import torch.nn.functional as F
 
 from ..data.dataset import LatentCache, build_loader
-from ..model import DEFAULT_TEXT_ENCODER, ModelSpec, build_dit, count_parameters, save_checkpoint
+from ..model import DEFAULT_TEXT_ENCODER, ModelSpec, build_dit, count_parameters, load_dit, save_checkpoint
 from ..sampler import AUDIO_FLOW_SHIFT, VIDEO_FLOW_SHIFT, build_schedule, packed_velocity
 
 
@@ -59,6 +59,11 @@ class TrainConfig:
     max_sigma: float = 0.98
     compile: bool = False
     max_samples: int = 0
+    init: str = ""
+    batched: bool = True
+    eval_every: int = 0
+    eval_batches: int = 32
+    patience: int = 0
 
 
 def dtype_from_name(name: str) -> torch.dtype:
@@ -107,6 +112,7 @@ def flow_matching_loss(
     audio_shift: float = AUDIO_FLOW_SHIFT,
     min_sigma: float = 0.02,
     max_sigma: float = 0.98,
+    batched: bool = True,
 ) -> LossOutput:
     """Joint H3 video+audio flow loss over one cached latent batch."""
     x0_video = batch["video_latents"]
@@ -115,33 +121,50 @@ def flow_matching_loss(
     bsz = x0_video.shape[0]
     device = x0_video.device
 
-    sigma_v = shifted_sigma(bsz, video_shift, device, min_sigma, max_sigma)
-    sigma_a = shifted_sigma(bsz, audio_shift, device, min_sigma, max_sigma)
-    noise_v = torch.randn_like(x0_video)
-    noise_a = torch.randn_like(x0_audio)
-    xt_video = add_noise(x0_video, sigma_v, noise_v)
-    xt_audio = add_noise(x0_audio, sigma_a, noise_a)
-    target_v = x0_video - noise_v
-    target_a = x0_audio - noise_a
-
-    # Structural arguments are shared across the batch, but per-sample sigmas differ.  The H3
-    # transformer represents distinct values globally, so build one packed forward per sample;
-    # gradient accumulation still makes this efficient and keeps the implementation faithful.
-    pred_v, pred_a = [], []
-    for i in range(bsz):
-        pv, pa = packed_velocity(
-            model,
-            layout,
-            text[i : i + 1],
-            xt_video[i : i + 1],
-            xt_audio[i : i + 1],
-            float(sigma_v[i]),
-            float(sigma_a[i]),
+    if batched:
+        # One sigma pair per micro-batch: the H3 transformer indexes its AdaLN modulation
+        # per sequence row (not per batch item), so a batched forward must share timesteps
+        # and therefore a shared sigma.  Sigma diversity across the optimizer step comes
+        # from grad_accum independent micro-batches; the gradient expectation is unchanged.
+        # packed_velocity already treats the batch axis as pure replication, so this is a
+        # single big forward instead of bsz tiny ones.
+        sigma_v = shifted_sigma(1, video_shift, device, min_sigma, max_sigma)[0]
+        sigma_a = shifted_sigma(1, audio_shift, device, min_sigma, max_sigma)[0]
+        noise_v = torch.randn_like(x0_video)
+        noise_a = torch.randn_like(x0_audio)
+        xt_video = add_noise(x0_video, sigma_v, noise_v)
+        xt_audio = add_noise(x0_audio, sigma_a, noise_a)
+        target_v = x0_video - noise_v
+        target_a = x0_audio - noise_a
+        pred_v, pred_a = packed_velocity(
+            model, layout, text, xt_video, xt_audio, float(sigma_v), float(sigma_a),
         )
-        pred_v.append(pv)
-        pred_a.append(pa)
-    pred_v = torch.cat(pred_v)
-    pred_a = torch.cat(pred_a)
+        sigma_v, sigma_a = sigma_v.unsqueeze(0), sigma_a.unsqueeze(0)
+    else:
+        # Per-sample sigma pairs (the original faithful path): one packed forward each.
+        sigma_v = shifted_sigma(bsz, video_shift, device, min_sigma, max_sigma)
+        sigma_a = shifted_sigma(bsz, audio_shift, device, min_sigma, max_sigma)
+        noise_v = torch.randn_like(x0_video)
+        noise_a = torch.randn_like(x0_audio)
+        xt_video = add_noise(x0_video, sigma_v, noise_v)
+        xt_audio = add_noise(x0_audio, sigma_a, noise_a)
+        target_v = x0_video - noise_v
+        target_a = x0_audio - noise_a
+        pred_v, pred_a = [], []
+        for i in range(bsz):
+            pv, pa = packed_velocity(
+                model,
+                layout,
+                text[i : i + 1],
+                xt_video[i : i + 1],
+                xt_audio[i : i + 1],
+                float(sigma_v[i]),
+                float(sigma_a[i]),
+            )
+            pred_v.append(pv)
+            pred_a.append(pa)
+        pred_v = torch.cat(pred_v)
+        pred_a = torch.cat(pred_a)
 
     video_loss = F.mse_loss(pred_v.float(), target_v.float())
     audio_loss = F.mse_loss(pred_a.float(), target_a.float())
@@ -212,12 +235,21 @@ def build_common_parser(description: str) -> argparse.ArgumentParser:
     ap.add_argument("--audio-loss-weight", type=float, default=1.0)
     ap.add_argument("--compile", action="store_true")
     ap.add_argument("--max-samples", type=int, default=0)
+    ap.add_argument("--init", default="", help="initialize the DiT from a trained checkpoint dir (full mode)")
+    ap.add_argument("--eval-every", type=int, default=0,
+                    help="evaluate the val split every N steps (0 = off)")
+    ap.add_argument("--eval-batches", type=int, default=32, help="val batches per evaluation (2 x 32 = 64 clips)")
+    ap.add_argument("--patience", type=int, default=0,
+                    help="early stop after N evaluations without val improvement (0 = off)")
+    ap.add_argument("--no-batched", action="store_true",
+                    help="per-sample forwards (numerically equivalent, far slower; A/B testing only)")
     return ap
 
 
 def config_from_args(args) -> TrainConfig:
     values = vars(args).copy()
     values["gradient_checkpointing"] = not values.pop("no_gradient_checkpointing", False)
+    values["batched"] = not values.pop("no_batched", False)
     # Mode-specific flags are not TrainConfig fields.
     allowed = TrainConfig.__dataclass_fields__
     return TrainConfig(**{k: v for k, v in values.items() if k in allowed})
@@ -253,6 +285,13 @@ def run_standard_training(
         text_layer=cache.text_layer,
     )
     model = model_builder(spec, dtype) if model_builder else build_dit(spec, dtype=torch.float32)
+    if cfg.init:
+        if model_builder is not None:
+            raise SystemExit("--init is only supported for full-parameter training (train_full/train_fsdp)")
+        init_sd = load_dit(cfg.init, device="cpu", dtype=torch.float32)[0].state_dict()
+        model.load_state_dict(init_sd)
+        del init_sd
+        print(f"init weights <- {cfg.init}")
     if cfg.gradient_checkpointing:
         model.enable_gradient_checkpointing()
     model = model.to(device=device, dtype=dtype)
@@ -278,6 +317,59 @@ def run_standard_training(
     optimizer.zero_grad(set_to_none=True)
     running = {"loss": 0.0, "video": 0.0, "audio": 0.0}
     started = time.time()
+
+    # Early stopping: every cfg.eval_every steps, score the held-out val split with a
+    # deterministic sigma stream.  The RNG state is saved/restored around each evaluation
+    # so val scoring never perturbs the training randomness; stop when cfg.patience
+    # consecutive evaluations fail to improve the best val loss.
+    best_val, evals_without_improvement = float("inf"), 0
+    val_loader = None
+    if cfg.eval_every:
+        val_loader, _ = build_loader(
+            cfg.latents, splits=("val",), batch_size=2, shuffle=False, num_workers=0, dtype=torch.float32,
+        )
+        print(f"early stop: eval every {cfg.eval_every} steps on {len(val_loader.dataset)} val clips, "
+              f"patience={cfg.patience or 'off'}")
+
+    def evaluate_val(step: int) -> float:
+        nonlocal best_val, evals_without_improvement
+        cpu_state = torch.get_rng_state()
+        cuda_states = torch.cuda.get_rng_state_all() if device.type == "cuda" else None
+        seed_everything(1234)
+        model.eval()
+        total, count = 0.0, 0
+        with torch.no_grad():
+            for i, batch in enumerate(cycle(val_loader)):
+                if i >= cfg.eval_batches:
+                    break
+                batch = move_batch(batch, device, torch.bfloat16)
+                with torch.autocast(device_type=device.type, dtype=dtype,
+                                    enabled=device.type == "cuda" and dtype != torch.float32):
+                    out = flow_matching_loss(
+                        model, layout, batch,
+                        audio_weight=cfg.audio_loss_weight,
+                        video_shift=cfg.video_flow_shift,
+                        audio_shift=cfg.audio_flow_shift,
+                        min_sigma=cfg.min_sigma, max_sigma=cfg.max_sigma,
+                        batched=cfg.batched,
+                    )
+                total += float(out.loss.detach())
+                count += 1
+        torch.set_rng_state(cpu_state)
+        if cuda_states is not None:
+            torch.cuda.set_rng_state_all(cuda_states)
+        model.train()
+        val = total / max(1, count)
+        if val < best_val - 1e-4:
+            best_val, evals_without_improvement = val, 0
+        else:
+            evals_without_improvement += 1
+        print(f"val_step={step} val_loss={val:.5f} best={best_val:.5f} "
+              f"no_improve={evals_without_improvement}" + (f"/{cfg.patience}" if cfg.patience else ""))
+        append_jsonl(os.path.join(cfg.out, "metrics.jsonl"),
+                     {"step": step, "val_loss": val, "best_val": best_val})
+        return val
+
     for step in range(1, cfg.steps + 1):
         for micro in range(cfg.grad_accum):
             batch = move_batch(next(iterator), device, dtype)
@@ -290,6 +382,7 @@ def run_standard_training(
                     audio_shift=cfg.audio_flow_shift,
                     min_sigma=cfg.min_sigma,
                     max_sigma=cfg.max_sigma,
+                    batched=cfg.batched,
                 )
                 loss = output.loss / cfg.grad_accum
             scaler.scale(loss).backward()
@@ -326,6 +419,12 @@ def run_standard_training(
                 save_adapter(unwrap_model(model), ckpt, spec, step)
             else:
                 save_checkpoint(ckpt, unwrap_model(model), spec, step=step, extra={"mode": mode})
+
+        if cfg.eval_every and step % cfg.eval_every == 0:
+            evaluate_val(step)
+            if cfg.patience and evals_without_improvement >= cfg.patience:
+                print(f"early stop at step {step}: {cfg.patience} evaluations without val improvement")
+                break
 
     final = os.path.join(cfg.out, "final")
     if save_adapter:
