@@ -1,0 +1,37 @@
+# data / media
+data/
+outputs/
+runs/
+hf_cache/
+*.mp4
+*.wav
+*.npz
+*.png
+# ...except repository assets (demo stills etc.)
+!assets/**/*.png
+
+# model weights that could stray outside runs/
+*.safetensors
+*.pt
+*.pth
+*.bin
+
+# python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.ipynb_checkpoints/
+.pytest_cache/
+.ruff_cache/
+
+# logs / metrics
+*.log
+metrics.jsonl
+
+# env
+.venv/
+venv/
+.DS_Store

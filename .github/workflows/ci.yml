@@ -1,0 +1,39 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+
+      # diffusers pin from scripts/pins.env -- the H3 classes live on diffusers main.
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install "diffusers @ git+https://github.com/huggingface/diffusers.git@a71e62e0d226c284b86abf518791a5ffbba064bf"
+          pip install -e .
+          pip install pytest
+
+      - name: Import check (package mapping)
+        run: |
+          python -c "import tiny_h3; print('tiny_h3', tiny_h3.__version__)"
+          python -c "from diffusers import MiniMaxH3Transformer3DModel; print('diffusers H3 classes ok')"
+          tiny-h3-generate --help > /dev/null
+
+      - name: Tests
+        run: pytest -q

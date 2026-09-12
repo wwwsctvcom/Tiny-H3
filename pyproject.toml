@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tiny-h3"
+version = "0.1.0"
+description = "A small, complete text-to-audio-video training project built on diffusers MiniMax-H3 classes"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "Apache-2.0"}
+authors = [{name = "Tiny-H3 contributors"}]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: Apache Software License",
+]
+dynamic = ["dependencies"]
+
+[project.scripts]
+tiny-h3-generate = "tiny_h3.pipeline:main"
+tiny-h3-full = "tiny_h3.train.train_full:main"
+tiny-h3-lora = "tiny_h3.train.train_lora:main"
+tiny-h3-fsdp = "tiny_h3.train.train_fsdp:main"
+tiny-h3-grpo = "tiny_h3.train.train_flow_grpo:main"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[tool.setuptools]
+packages = ["tiny_h3", "tiny_h3.data", "tiny_h3.rewards", "tiny_h3.train"]
+
+# The import name stays `tiny_h3` while the sources live flat under src/ (no nesting).
+[tool.setuptools.package-dir]
+tiny_h3 = "src"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

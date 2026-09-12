@@ -1,0 +1,33 @@
+# Tiny-H3 runtime requirements.
+#
+#   pip install -r requirements.txt
+#   pip install -e /root/autodl-tmp/refs/diffusers     # H3 lives on main, see setup_env.sh
+#
+# torch is intentionally unpinned: the AutoDL image already ships a Blackwell-capable build
+# (sm_120 needs CUDA 12.8+).  `scripts/setup_env.sh --with-torch` installs one on a bare env.
+# torch>=2.8
+# torchvision
+
+# --- model / training ---
+transformers==5.17.0
+accelerate==1.15.0
+peft==0.20.0
+safetensors==0.8.0
+huggingface_hub==1.31.0
+einops==0.8.2
+
+# --- data: video/audio IO and the procedural generator ---
+numpy==2.4.6
+pillow==12.2.0
+soundfile==0.14.0
+scipy==1.18.1
+imageio-ffmpeg==0.6.0     # ships a static ffmpeg; the project never needs a system one
+
+# --- utilities ---
+tqdm==4.66.2
+PyYAML==6.0.3
+matplotlib==3.11.0        # loss / reward curves
+
+# --- optional ---
+av==18.1.0                # PyAV, only for reading exotic containers
+pytest==9.1.1             # tests/ + tools/smoke_test.py
