@@ -25,9 +25,9 @@ Official DiT: hidden 5376 / 50 layers / 56×128 heads / FFN 14336 / time-embed 2
 | Preset | hidden | layers | heads×dim | FFN | Params | Params + optimizer | Share of official |
 |---|---|---|---|---|---|---|---|
 | `smoke` | 256 | 6 | 4×64 | 704 | **7.3 M** | ~0.1 GiB | 0.03 % |
-| `tiny_h3_5090` (default) | 512 | 10 | 8×64 | 1408 | **47.6 M** | ~0.5 GiB | 0.20 % |
-| `tiny_h3_xl` | 768 | 14 | 12×64 | 2048 | **140.3 M** | ~1.6 GiB | 0.57 % |
-| `tiny_h3_5090_max` | 1024 | 16 | 16×64 | 2816 | **285.1 M** | ~3.2 GiB | 1.17 % |
+| `tiny_h3_5090` (default) | 512 | 10 | 8×64 | 1408 | **63.7 M** | ~0.5 GiB | 0.20 % |
+| `tiny_h3_xl` | 768 | 14 | 12×64 | 2048 | **190.3 M** | ~1.6 GiB | 0.57 % |
+| `tiny_h3_5090_max` | 1024 | 16 | 16×64 | 2816 | **386.5 M** | ~3.2 GiB | 1.17 % |
 
 Frozen components, never trained: video VAE 10.4 GB, audio VAE 0.6 GB, text encoder (Qwen3-0.6B ≈ 1.2 GB
 bf16, Qwen3-0.6B 1.2 GB). The official alternative, Qwen3-VL-8B, is 66 GB — which is why the conditioner is
