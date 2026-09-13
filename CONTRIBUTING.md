@@ -7,9 +7,9 @@ the design rationale lives in [`docs/design.md`](docs/design.md).
 
 ```bash
 git clone <this repo> && cd tiny-h3
-bash scripts/setup_env.sh        # deps + pinned diffusers + pip install -e .
+bash scripts/setup.sh        # deps + pinned diffusers + pip install -e .
 source scripts/env.sh            # env vars (HF mirror, data paths)
-bash scripts/download_assets.sh  # H3 VAEs + Qwen3-0.6B (~12 GB, GPU runs need them)
+bash scripts/download.sh  # H3 VAEs + Qwen3-0.6B (~12 GB, GPU runs need them)
 ```
 
 The package sources live flat under `src/` and keep the import name `tiny_h3`
