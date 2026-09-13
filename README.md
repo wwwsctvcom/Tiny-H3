@@ -30,10 +30,51 @@ Training: 9,000 steps (~39 epoch), batch 8×3, lr 2e-4 cosine, one RTX 5090 at 9
 
 ![loss curve](assets/loss_curve.png)
 
-### Results — reconstructions of training clips
+### Results — 7-clip deep-overfit: generations match the training data
 
-The model rebuilds its training clips with near-indistinguishable fidelity at 384×384
-(48 denoising steps):
+The headline result. A 4,000-step deep-overfit fine-tune of the 1.23B checkpoint on **seven
+showcase segments** (≈4,570 epoch on those clips) drops reconstruction error to
+**5.5–9.3 / 255 across all seven** — and the phase drift disappears with it (direct vs
+best-shift MAE are equal: the regenerated motion follows the source trajectory). Side by side,
+the generations are near-indistinguishable from the training clips:
+
+<p align="center">
+  <a href="assets/demos/overfit_morning_bedroom_scene.mp4">bedroom</a> ·
+  <a href="assets/demos/overfit_crystal_cave_with_glowing_crystals.mp4">crystal cave</a> ·
+  <a href="assets/demos/overfit_ruined_city_street_with_fire_and_smoke.mp4">ruined street</a> ·
+  <a href="assets/demos/overfit_motorcycle_on_dirt_terrain.mp4">motorcycle</a> ·
+  <a href="assets/demos/overfit_chinese_opera_performer_on_stage.mp4">opera stage</a> ·
+  <a href="assets/demos/overfit_warrior_monk_bullet-time_kick.mp4">warrior monk</a> ·
+  <a href="assets/demos/overfit_waterfall_landscape.mp4">waterfall (2D anime)</a>
+</p>
+
+<p align="center">
+  <video src="assets/demos/overfit_morning_bedroom_scene.mp4" controls width="180"></video>
+  <video src="assets/demos/overfit_crystal_cave_with_glowing_crystals.mp4" controls width="180"></video>
+  <video src="assets/demos/overfit_ruined_city_street_with_fire_and_smoke.mp4" controls width="180"></video>
+  <video src="assets/demos/overfit_motorcycle_on_dirt_terrain.mp4" controls width="180"></video>
+  <video src="assets/demos/overfit_chinese_opera_performer_on_stage.mp4" controls width="180"></video>
+  <video src="assets/demos/overfit_warrior_monk_bullet-time_kick.mp4" controls width="180"></video>
+  <video src="assets/demos/overfit_waterfall_landscape.mp4" controls width="180"></video>
+</p>
+
+Command (resume from the shipped checkpoint with `--init`; the memory set is a plain latent
+cache over the chosen segments):
+
+```bash
+python -m tiny_h3.train.train_full --latents data/mem8_latents \
+  --preset configs/stage4_xlarge.json --init runs/stage4_1232m/final \
+  --out runs/mem8_overfit --steps 4000 --batch-size 8 --lr 6e-5
+python tools/inference.py --checkpoint runs/mem8_overfit/final \
+  --prompt <segment prompt> --size 384 --steps 48
+```
+
+### Full-corpus reconstruction (all 5,431 segments)
+
+The same checkpoint trained on the whole corpus (11,500 + 500 steps) reaches a mean
+reconstruction error of ~38/255 across random segments: capacity, not training time, is the
+binding constraint at this scale. Fidelity per clip is tunable by choosing how many clips share
+the model — 7 clips give ~7/255, 5,431 clips ~38/255.
 
 <p align="center">
   <a href="assets/demos/reconstructed_bedroom_morning.mp4">bedroom, morning light</a> ·
