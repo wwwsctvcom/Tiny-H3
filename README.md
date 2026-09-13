@@ -133,8 +133,11 @@ python -m tiny_h3.train.train_full \
 
 ~1.1 s/step on a 5090 (9,000 steps ≈ 2.8 h at 99% GPU utilization, 11.6 GB). Loss prints live
 and lands in `runs/tiny_h3/metrics.jsonl`; checkpoints are saved in the diffusers layout every
-3,000 steps. `--init <checkpoint>` resumes from a trained model; `--eval-every N --patience M`
-adds early stopping on a held-out split.
+3,000 steps. The defaults are the tuned recipe — EMA weights on (`--ema-decay 0.999`; the final
+checkpoint stores the smoothed weights), AdamW eps 1e-15 / beta2 0.999, cosine lr with warmup.
+`--init <checkpoint>` resumes from a trained model; `--eval-every N --patience M` adds early
+stopping on a held-out split; `--lr-schedule constant` matches the miles-diffusion SFT recipe
+for short fine-tunes.
 
 The shipped demo checkpoint adds a 4,000-step pass at lr 6e-5 over seven showcase segments on
 top of that run — seven clips are enough for generations to match the training data closely

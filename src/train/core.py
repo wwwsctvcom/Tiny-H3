@@ -65,9 +65,9 @@ class TrainConfig:
     eval_batches: int = 32
     patience: int = 0
     adam_beta2: float = 0.999
-    adam_eps: float = 1e-8
+    adam_eps: float = 1e-15
     lr_schedule: str = "cosine"
-    ema_decay: float = 0.0
+    ema_decay: float = 0.999
 
 
 def dtype_from_name(name: str) -> torch.dtype:
@@ -253,8 +253,8 @@ def build_common_parser(description: str) -> argparse.ArgumentParser:
     ap.add_argument("--adam-eps", type=float, default=1e-15,
                     help="AdamW eps (miles-diffusion's diffusion recipes use 1e-15)")
     ap.add_argument("--lr-schedule", choices=["cosine", "constant"], default="cosine")
-    ap.add_argument("--ema-decay", type=float, default=0.0,
-                    help="EMA decay for sampled weights (e.g. 0.999; 0 = off). The final "
+    ap.add_argument("--ema-decay", type=float, default=0.999,
+                    help="EMA decay for the shipped final weights (0 = off). The final "
                          "checkpoint stores the EMA weights when enabled.")
     return ap
 

@@ -36,7 +36,7 @@ def main() -> int:
     ap.add_argument("--checkpoint", required=True, help="trained checkpoint dir (full/FSDP/LoRA/GRPO)")
     ap.add_argument("--prompt", action="append", required=True, help="text prompt; repeat for multiple clips")
     ap.add_argument("--out", default="outputs/inference", help="output directory")
-    ap.add_argument("--steps", type=int, default=24, help="denoising steps")
+    ap.add_argument("--steps", type=int, default=48, help="denoising steps")
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--size", type=int, default=256, help="square canvas size, multiple of 32")
     ap.add_argument("--frames", type=int, default=22, help="pixel frames, on the 17n+5 grid")
