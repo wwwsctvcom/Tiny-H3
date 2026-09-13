@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Prepare training data.
 #
-#   bash scripts/prepare_data.sh synth              # procedural clips only (CPU, minutes)
-#   bash scripts/prepare_data.sh latents            # encode clips -> latent cache (needs the H3 VAEs; GPU)
-#   bash scripts/prepare_data.sh all                # synth + latents
+#   bash scripts/data.sh synth              # procedural clips only (CPU, minutes)
+#   bash scripts/data.sh latents            # encode clips -> latent cache (needs the H3 VAEs; GPU)
+#   bash scripts/data.sh all                # synth + latents
 #
-# Real footage is optional: after `scripts/download_assets.sh --group data`, point
+# Real footage is optional: after `scripts/download.sh --group data`, point
 # tools/prepare_latents.py at --manifest <dataset>/train.jsonl (see docs/design.md).
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

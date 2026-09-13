@@ -25,7 +25,7 @@ export HF_HUB_ENABLE_HF_TRANSFER="${HF_HUB_ENABLE_HF_TRANSFER:-0}"
 
 export TOKENIZERS_PARALLELISM=false
 # The tiny_h3 package (sources under src/, import name kept via pyproject package-dir)
-# is provided by `pip install -e .` (scripts/setup_env.sh).  tools/*.py and pytest also
+# is provided by `pip install -e .` (scripts/setup.sh).  tools/*.py and pytest also
 # work from a bare checkout through their own bootstrap mapping.
 
 # Uncomment to silence the "tensorflow/ flax not installed" noise from transformers.

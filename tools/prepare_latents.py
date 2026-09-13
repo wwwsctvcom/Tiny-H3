@@ -49,7 +49,7 @@ def load_manifest(data_dir: str, split: str) -> tuple[list[dict], dict]:
     for name in ("train", "val") if split == "both" else (split,):
         path = os.path.join(data_dir, f"{name}.jsonl")
         if not os.path.exists(path):
-            raise FileNotFoundError(f"missing manifest {path}; run scripts/prepare_data.sh synth first")
+            raise FileNotFoundError(f"missing manifest {path}; run scripts/data.sh synth first")
         with open(path, encoding="utf-8") as f:
             for line in f:
                 line = line.strip()

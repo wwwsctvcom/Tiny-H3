@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Tiny-H3, one command, start to finish:
 #
-#   bash scripts/run_all.sh                 # full loop on one GPU (~1-2 h on a 5090)
-#   bash scripts/run_all.sh --fast          # smoke-sized loop (~15 min), asserts the plumbing
-#   bash scripts/run_all.sh --skip-data     # reuse an existing latent cache
+#   bash scripts/all.sh                 # full loop on one GPU (~1-2 h on a 5090)
+#   bash scripts/all.sh --fast          # smoke-sized loop (~15 min), asserts the plumbing
+#   bash scripts/all.sh --skip-data     # reuse an existing latent cache
 #
 # Steps: env check -> download assets (if missing) -> synth data -> latent cache ->
 #        full fine-tune -> text-to-AV demo -> report.

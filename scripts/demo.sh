@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Generate demo videos from a trained checkpoint.
 #
-#   bash scripts/generate_demo.sh runs/full/final                    # 3 preset prompts
-#   bash scripts/generate_demo.sh runs/grpo/final "a green square orbiting on a dark background, with a rising and falling tone"
+#   bash scripts/demo.sh runs/mem8_overfit/final                    # 3 preset prompts
+#   bash scripts/demo.sh runs/mem8_overfit/final "a green square orbiting on a dark background, with a rising and falling tone"
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/env.sh"

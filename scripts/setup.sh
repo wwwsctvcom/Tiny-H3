@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Install Tiny-H3's Python environment (run once per instance).
 #
-#   bash scripts/setup_env.sh              # pip + diffusers from the vendored clone
-#   bash scripts/setup_env.sh --with-torch # also install torch (only for a bare Python env)
+#   bash scripts/setup.sh              # pip + diffusers from the vendored clone
+#   bash scripts/setup.sh --with-torch # also install torch (only for a bare Python env)
 #
 # Notes
 #  * ``diffusers``: MiniMax-H3 support is on ``main`` (0.41.0.dev0), not in any release yet,
@@ -82,4 +82,4 @@ print(f"  torch cuda available: {torch.cuda.is_available()}"
 PY
 
 echo
-echo "done.  next: bash scripts/download_assets.sh && bash scripts/prepare_data.sh"
+echo "done.  next: bash scripts/download.sh && bash scripts/data.sh"

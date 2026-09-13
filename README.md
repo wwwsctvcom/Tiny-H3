@@ -41,14 +41,16 @@ visually near-indistinguishable from the training data:
 </p>
 
 <p align="center">
-  <video src="assets/demos/demo_bedroom_morning.mp4" controls width="180"></video>
-  <video src="assets/demos/demo_crystal_cave.mp4" controls width="180"></video>
-  <video src="assets/demos/demo_ruined_street.mp4" controls width="180"></video>
-  <video src="assets/demos/demo_motorcycle_dirt.mp4" controls width="180"></video>
-  <video src="assets/demos/demo_opera_stage.mp4" controls width="180"></video>
-  <video src="assets/demos/demo_warrior_monk.mp4" controls width="180"></video>
-  <video src="assets/demos/demo_waterfall_anime.mp4" controls width="180"></video>
+  <img src="assets/gifs/demo_bedroom_morning.gif" width="130"> &
+  <img src="assets/gifs/demo_crystal_cave.gif" width="130"> &
+  <img src="assets/gifs/demo_ruined_street.gif" width="130"> &
+  <img src="assets/gifs/demo_motorcycle_dirt.gif" width="130"> &
+  <img src="assets/gifs/demo_opera_stage.gif" width="130"> &
+  <img src="assets/gifs/demo_warrior_monk.gif" width="130"> &
+  <img src="assets/gifs/demo_waterfall_anime.gif" width="130">
 </p>
+
+<p align="center"><sub>Animated previews (GIF); full-quality MP4s are in <a href="assets/demos">assets/demos</a>.</sub></p>
 
 Training loss over the run:
 
