@@ -1,39 +1,30 @@
 #!/usr/bin/env bash
-# Tiny-H3, one command, start to finish:
+# Tiny-H3, one command, start to finish (single 5090):
 #
-#   bash scripts/all.sh                 # full loop on one GPU (~1-2 h on a 5090)
-#   bash scripts/all.sh --fast          # smoke-sized loop (~15 min), asserts the plumbing
-#   bash scripts/all.sh --skip-data     # reuse an existing latent cache
-#
-# Steps: env check -> download assets (if missing) -> synth data -> latent cache ->
-#        full fine-tune -> text-to-AV demo -> report.
+#   bash scripts/all.sh --fast    # small slice, ~15 min, asserts the plumbing
+#   bash scripts/all.sh           # full corpus pass (~hours)
+# Steps: env check -> model components -> corpus slice -> latents -> train -> demos.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/env.sh"
 
 FAST=0
-SKIP_DATA=0
-SKIP_DOWNLOAD=0
 for arg in "$@"; do
   case "$arg" in
     --fast) FAST=1 ;;
-    --skip-data) SKIP_DATA=1 ;;
-    --skip-download) SKIP_DOWNLOAD=1 ;;
     *) echo "unknown argument: $arg" >&2; exit 2 ;;
   esac
 done
 
+SEG_DIR="${TINY_H3_SEG_DIR:-$TINY_H3_DATA/h3selfgen_seg384}"
+RUN_DIR="${RUN_DIR:-$TINY_H3_ROOT/runs/tiny_h3}"
+STEPS="${STEPS:-9000}"
 if [[ "$FAST" == "1" ]]; then
-  export TINY_H3_SYNTH_COUNT="${TINY_H3_SYNTH_COUNT:-64}"
-  export TINY_H3_SYNTH_VAL="${TINY_H3_SYNTH_VAL:-8}"
-  export TINY_H3_DATA_SIZE="${TINY_H3_DATA_SIZE:-128}"
-  PRESET="smoke"
-  STEPS="${STEPS:-300}"
+  MAX_CLIPS="${MAX_CLIPS:-24}"
+  STEPS=300
 else
-  PRESET="tiny_h3_5090"
-  STEPS="${STEPS:-4000}"
+  MAX_CLIPS="${MAX_CLIPS:-0}"
 fi
-RUN_DIR="${RUN_DIR:-$TINY_H3_ROOT/runs/$(date +%Y%m%d-%H%M%S)}"
 mkdir -p "$RUN_DIR"
 echo "run dir: $RUN_DIR"
 
@@ -48,49 +39,32 @@ from diffusers import MiniMaxH3Transformer3DModel  # noqa: F401
 print("diffusers H3 classes ok")
 PY
 
-if [[ "$SKIP_DOWNLOAD" == "0" ]]; then
-  step "2/6 assets (H3 VAEs, Qwen3-0.6B; skipped automatically when cached)"
-  python "$TINY_H3_ROOT/tools/download_assets.py" --group model
-else
-  step "2/6 assets (skipped)"
-fi
+step "2/6 model components (H3 VAEs + Qwen3-0.6B; skipped when cached)"
+bash "$HERE/download.sh" --group model
 
-if [[ "$SKIP_DATA" == "0" ]]; then
-  step "3/6 synthetic clips"
-  python "$TINY_H3_ROOT/tools/make_synth_data.py" \
-    --out "$TINY_H3_DATA/synth" \
-    --count "${TINY_H3_SYNTH_COUNT:-512}" --val-count "${TINY_H3_SYNTH_VAL:-64}" \
-    --size "${TINY_H3_DATA_SIZE:-256}" --frames "${TINY_H3_FRAMES:-22}" \
-    --workers "${TINY_H3_WORKERS:-8}" --preview
+step "3/6 corpus segments (H3-SelfGen -> 22-frame segments @ 384x384)"
+bash "$HERE/data.sh" download
+python "$TINY_H3_ROOT/tools/segment_clips.py" \
+  --metadata "${TINY_H3_DATASET_DIR:-$TINY_H3_DATA/h3_selfgen}/metadata.jsonl" \
+  --video-root "${TINY_H3_DATASET_DIR:-$TINY_H3_DATA/h3_selfgen}" \
+  --out "$SEG_DIR" --segment-frames 22 --size 384 --workers 24 --max-clips "$MAX_CLIPS"
 
-  step "4/6 latent cache (frozen H3 VAEs + Qwen3)"
-  python "$TINY_H3_ROOT/tools/prepare_latents.py" \
-    --data-dir "$TINY_H3_DATA/synth" --out "$TINY_H3_DATA/synth/latents" \
-    --device cuda
-else
-  step "3-4/6 data (skipped)"
-fi
+step "4/6 latent cache (official VAEs + Qwen3-0.6B, 256-token prompts)"
+python "$TINY_H3_ROOT/tools/prepare_latents.py" --data-dir "$SEG_DIR" \
+  --out "$SEG_DIR/latents" --device cuda --size 384 --text-tokens 256 \
+  --batch-size 2 --split train
 
-step "5/6 full fine-tune ($PRESET, $STEPS steps)"
+step "5/6 train (1.23B DiT, configs/config.json)"
 python -m tiny_h3.train.train_full \
-  --latents "$TINY_H3_DATA/synth/latents" \
-  --preset "$PRESET" \
-  --steps "$STEPS" \
-  --out "$RUN_DIR/train_full" \
+  --latents "$SEG_DIR/latents" \
+  --preset configs/config.json \
+  --out "$RUN_DIR" --steps "$STEPS" --batch-size 8 --grad-accum 3 --lr 2e-4 \
   --device cuda
 
-step "6/6 text-to-audio-video demo"
-python -m tiny_h3.pipeline \
-  --checkpoint "$RUN_DIR/train_full/final" \
-  --prompts \
-    "a red circle bouncing on a dark background, with rhythmic thumps" \
-    "two squares, one cyan and one yellow, pulsing on a purple background, with steady beats at a fast tempo" \
-    "three rings in purple, white and yellow, orbiting on a blue background, with a rising and falling tone" \
-  --steps 24 \
-  --out "$RUN_DIR/demo" \
-  --device cuda
+step "6/6 demos (7 preset corpus prompts)"
+bash "$HERE/demo.sh" "$RUN_DIR/final"
 
 echo
 echo "all done."
-echo "  demo videos : $RUN_DIR/demo"
-echo "  checkpoints : $RUN_DIR/train_full"
+echo "  demo videos : $TINY_H3_DATA/../outputs (see demo.sh output)"
+echo "  checkpoints : $RUN_DIR"

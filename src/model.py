@@ -7,7 +7,6 @@ so the frozen official VAEs and this DiT speak the same latent language.
 Presets (parameter counts are approximate, text encoder excluded)::
 
     smoke        ~9M   CPU smoke tests, 64x64 / 22 frames
-    tiny_h3_5090 ~44M  the default single-5090 configuration, 256x256 / 22 frames
     tiny_h3_xl   ~110M 512x512 / 39 frames if you have the patience
 
 Text conditioning replaces H3's 66 GB Qwen3-VL-8B with a frozen small Qwen3.
@@ -27,7 +26,7 @@ from .vae import AUDIO_LATENT_CHANNELS, VIDEO_LATENT_CHANNELS
 
 DEFAULT_TEXT_ENCODER = "Qwen/Qwen3-0.6B"
 DEFAULT_TEXT_DIM = 1024  # Qwen3-0.6B hidden size
-DEFAULT_TEXT_TOKENS = 48
+DEFAULT_TEXT_TOKENS = 256
 
 # Small Qwen options, all frozen, all fine to run on one 5090:
 #   Qwen/Qwen3-0.6B      1024-dim, 28 layers  (default; closest to official H3's Qwen3-VL lineage)

@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Generate demo videos from a trained checkpoint.
 #
-#   bash scripts/demo.sh runs/mem8_overfit/final                    # 3 preset prompts
-#   bash scripts/demo.sh runs/mem8_overfit/final "a green square orbiting on a dark background, with a rising and falling tone"
+#   bash scripts/demo.sh runs/mem8_overfit/final                    # preset corpus prompts
+#   bash scripts/demo.sh runs/mem8_overfit/final "integrated_multimodal_description: [Shot 1] Live-action, cinematic, ..."
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$HERE/env.sh"
@@ -26,7 +26,7 @@ python -m tiny_h3.pipeline \
   --checkpoint "$CKPT" \
   --prompts "${PROMPTS[@]}" \
   --out "$OUT" \
-  --height "${TINY_H3_HEIGHT:-256}" --width "${TINY_H3_WIDTH:-256}" \
+  --height "${TINY_H3_HEIGHT:-384}" --width "${TINY_H3_WIDTH:-384}" \
   --frames "${TINY_H3_FRAMES:-22}" --steps "${TINY_H3_STEPS:-24}" \
   --device "${TINY_H3_DEVICE:-cuda}"
 echo "videos written to $OUT"

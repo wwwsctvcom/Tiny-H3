@@ -12,7 +12,7 @@ parameters** (the official one is 24.4B), which fits a 32 GB card with room to s
 | | Official MiniMax-H3 | Tiny-H3 |
 |---|---|---|
 | DiT | 24.4B (hidden 5376 × 50 layers) | **1.23B** (hidden 1408 × 20 layers) |
-| Text encoder | Qwen3-VL-8B (66 GB) | frozen **Qwen3-0.6B**, 128-token prompts |
+| Text encoder | Qwen3-VL-8B (66 GB) | frozen **Qwen3-0.6B**, 256-token prompts |
 | Video / audio VAE | official | **official, frozen** |
 | Latent space / packed sequence / scheduler / flow sign | — | **identical to the official model** |
 
@@ -31,8 +31,8 @@ layout as well (`config.json` + `diffusion_pytorch_model.safetensors`), loadable
 
 ## Results
 
-The shipped checkpoint was trained on seven showcase clips from the corpus below (4,000 steps
-on top of a corpus-wide pre-training pass). Its generations for those clips' prompts are
+The shipped checkpoint was trained on seven showcase clips from the corpus below (a 9,000-step
+corpus-wide pre-training pass, then 2,000 refinement steps at 256-token prompts). Its generations for those clips' prompts are
 visually near-indistinguishable from the training data:
 
 <p align="center">
@@ -119,7 +119,7 @@ python tools/segment_clips.py --metadata data/h3_selfgen/metadata.jsonl \
     --segment-frames 22 --size 384 --workers 24
 python tools/prepare_latents.py --data-dir data/h3selfgen_seg384 \
     --out data/h3selfgen_seg384/latents --device cuda \
-    --size 384 --text-tokens 128 --batch-size 2 --split train
+    --size 384 --text-tokens 256 --batch-size 2 --split train
 ```
 
 ### 5. Train
