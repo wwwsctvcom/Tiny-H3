@@ -217,8 +217,8 @@ def build_common_parser(description: str) -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=description, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     ap.add_argument("--latents", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--preset", default="stage4_xlarge",
-                    help="built-in name (stage4_xlarge / smoke for CPU tests) or a model config JSON path, e.g. configs/stage4_xlarge.json")
+    ap.add_argument("--preset", default="configs/config.json",
+                    help="model config JSON (configs/config.json = the shipped 1.23B model; edit it to change size) or 'smoke' for CPU tests")
     ap.add_argument("--steps", type=int, default=4000)
     ap.add_argument("--batch-size", type=int, default=2)
     ap.add_argument("--grad-accum", type=int, default=4)

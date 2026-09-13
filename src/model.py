@@ -34,23 +34,19 @@ DEFAULT_TEXT_TOKENS = 48
 #   Qwen/Qwen2.5-0.5B     896-dim, 24 layers
 TEXT_ENCODER_CHOICES = ("Qwen/Qwen3-0.6B", "Qwen/Qwen2.5-0.5B")
 
+# The shipped model is defined by configs/config.json (diffusers-style fields, editable to
+# train a different size without touching the source).  The table below only registers its
+# kwargs under the name "tiny_h3", plus a tiny CPU preset for the test suite.
 TINY_H3_PRESETS: dict[str, dict] = {
     "smoke": dict(
         hidden_size=256, num_layers=6, num_refiner_layers=1, ffn_dim=704,
         num_attention_heads=4, attention_head_dim=64, time_embed_hidden_dim=512, time_embed_dim=128,
         rope_freq_dim=8,
     ),
-    "stage4_xlarge": dict(
-        hidden_size=1408, num_layers=20, num_refiner_layers=2, ffn_dim=3584,
-        num_attention_heads=22, attention_head_dim=64, time_embed_hidden_dim=2816, time_embed_dim=1408,
-        rope_freq_dim=8,
-    ),
 }
-# stage4_xlarge is the shipped configuration (1.23B params, trained at 384x384 with
-# 128-token prompts on H3-SelfGen segments); its JSON copy lives in configs/.
-# Every preset uses head_dim 64; the official H3 pairs rope_freq_dim 16 with head_dim 128,
-# i.e. rotary angles span 96 of 128 channels (75%).  rope_freq_dim=8 spans 48 of 64 -- the
-# same fraction, and anything larger than 10 overruns the head_dim inside the H3 attention.
+# head_dim is 64 in every preset here; the official H3 pairs rope_freq_dim 16 with head_dim
+# 128, i.e. rotary angles span 96 of 128 channels (75%).  rope_freq_dim=8 spans 48 of 64 --
+# the same fraction, and anything larger than 10 overruns the head_dim inside the H3 attention.
 
 
 @dataclass
@@ -126,12 +122,17 @@ def build_dit(spec: ModelSpec, dtype: torch.dtype = torch.float32) -> "torch.nn.
     """Instantiate the tiny H3 transformer."""
     from diffusers import MiniMaxH3Transformer3DModel
 
+    kwargs = resolve_preset_kwargs(spec.preset)
+    # These four come from the spec (latent cache / user flags); drop them if the config
+    # file also carries them so the spec wins and there is no keyword collision.
+    for key in ("in_channels", "audio_in_channels", "patch_size", "text_dim"):
+        kwargs.pop(key, None)
     model = MiniMaxH3Transformer3DModel(
         in_channels=spec.in_channels,
         audio_in_channels=spec.audio_in_channels,
         patch_size=tuple(spec.patch_size),
         text_dim=spec.text_dim,
-        **resolve_preset_kwargs(spec.preset),
+        **kwargs,
     )
     return model.to(dtype=dtype)
 
