@@ -1,0 +1,12 @@
+{
+  "_description": "Stage-4 extra-large DiT (~1.3B) for maximum memorization capacity at 384x384",
+  "hidden_size": 1408,
+  "num_layers": 20,
+  "num_refiner_layers": 2,
+  "ffn_dim": 3584,
+  "num_attention_heads": 22,
+  "attention_head_dim": 64,
+  "time_embed_hidden_dim": 2816,
+  "time_embed_dim": 1408,
+  "rope_freq_dim": 8
+}
