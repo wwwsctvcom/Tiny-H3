@@ -40,26 +40,16 @@ TINY_H3_PRESETS: dict[str, dict] = {
         num_attention_heads=4, attention_head_dim=64, time_embed_hidden_dim=512, time_embed_dim=128,
         rope_freq_dim=8,
     ),
-    "tiny_h3_5090": dict(
-        hidden_size=512, num_layers=10, num_refiner_layers=2, ffn_dim=1408,
-        num_attention_heads=8, attention_head_dim=64, time_embed_hidden_dim=1024, time_embed_dim=256,
-        rope_freq_dim=8,
-    ),
-    "tiny_h3_xl": dict(
-        hidden_size=768, num_layers=14, num_refiner_layers=2, ffn_dim=2048,
-        num_attention_heads=12, attention_head_dim=64, time_embed_hidden_dim=1536, time_embed_dim=384,
-        rope_freq_dim=8,
-    ),
-    # Still only ~3.2 GiB of parameters+optimizer states: the 5090 has room, the budget that
-    # really runs out first is data and wall-clock.
-    "tiny_h3_5090_max": dict(
-        hidden_size=1024, num_layers=16, num_refiner_layers=2, ffn_dim=2816,
-        num_attention_heads=16, attention_head_dim=64, time_embed_hidden_dim=2048, time_embed_dim=512,
+    "stage4_xlarge": dict(
+        hidden_size=1408, num_layers=20, num_refiner_layers=2, ffn_dim=3584,
+        num_attention_heads=22, attention_head_dim=64, time_embed_hidden_dim=2816, time_embed_dim=1408,
         rope_freq_dim=8,
     ),
 }
-# Every preset uses head_dim 64; the official H3 pairs rope_freq_dim 16 with head_dim 128, i.e.
-# rotary angles span 6*16 = 96 of 128 channels (75%).  rope_freq_dim=8 spans 48 of 64 -- the
+# stage4_xlarge is the shipped configuration (1.23B params, trained at 384x384 with
+# 128-token prompts on H3-SelfGen segments); its JSON copy lives in configs/.
+# Every preset uses head_dim 64; the official H3 pairs rope_freq_dim 16 with head_dim 128,
+# i.e. rotary angles span 96 of 128 channels (75%).  rope_freq_dim=8 spans 48 of 64 -- the
 # same fraction, and anything larger than 10 overruns the head_dim inside the H3 attention.
 
 

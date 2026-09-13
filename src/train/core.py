@@ -217,8 +217,8 @@ def build_common_parser(description: str) -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser(description=description, formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     ap.add_argument("--latents", required=True)
     ap.add_argument("--out", required=True)
-    ap.add_argument("--preset", default="tiny_h3_5090",
-                    help="built-in name (smoke/tiny_h3_5090/tiny_h3_xl/tiny_h3_5090_max) or a model config JSON path, e.g. configs/tiny_h3_xl.json")
+    ap.add_argument("--preset", default="stage4_xlarge",
+                    help="built-in name (stage4_xlarge / smoke for CPU tests) or a model config JSON path, e.g. configs/stage4_xlarge.json")
     ap.add_argument("--steps", type=int, default=4000)
     ap.add_argument("--batch-size", type=int, default=2)
     ap.add_argument("--grad-accum", type=int, default=4)
