@@ -74,14 +74,14 @@ git clone https://github.com/wwwsctvcom/Tiny-H3.git tiny-h3 && cd tiny-h3
 ```bash
 export PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple   # skip on AutoDL (bundled mirror)
 export HF_ENDPOINT=https://hf-mirror.com                        # set by default in scripts/env.sh
-bash scripts/setup_env.sh
+bash scripts/setup.sh
 ```
 
 ### 3. Download model components (~12 GB via hf-mirror)
 
 ```bash
 source scripts/env.sh
-bash scripts/download_assets.sh
+bash scripts/download.sh
 ```
 
 | Component | Size | Purpose |
