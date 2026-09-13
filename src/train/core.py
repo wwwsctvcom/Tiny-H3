@@ -64,6 +64,10 @@ class TrainConfig:
     eval_every: int = 0
     eval_batches: int = 32
     patience: int = 0
+    adam_beta2: float = 0.999
+    adam_eps: float = 1e-8
+    lr_schedule: str = "cosine"
+    ema_decay: float = 0.0
 
 
 def dtype_from_name(name: str) -> torch.dtype:
@@ -244,6 +248,14 @@ def build_common_parser(description: str) -> argparse.ArgumentParser:
                     help="early stop after N evaluations without val improvement (0 = off)")
     ap.add_argument("--no-batched", action="store_true",
                     help="per-sample forwards (numerically equivalent, far slower; A/B testing only)")
+    ap.add_argument("--adam-beta2", type=float, default=0.999,
+                    help="AdamW beta2 (miles-diffusion's validated SFT/RL recipes use 0.999)")
+    ap.add_argument("--adam-eps", type=float, default=1e-15,
+                    help="AdamW eps (miles-diffusion's diffusion recipes use 1e-15)")
+    ap.add_argument("--lr-schedule", choices=["cosine", "constant"], default="cosine")
+    ap.add_argument("--ema-decay", type=float, default=0.0,
+                    help="EMA decay for sampled weights (e.g. 0.999; 0 = off). The final "
+                         "checkpoint stores the EMA weights when enabled.")
     return ap
 
 
@@ -302,10 +314,21 @@ def run_standard_training(
         model = torch.compile(model)
 
     trainable = [p for p in model.parameters() if p.requires_grad]
-    optimizer = torch.optim.AdamW(trainable, lr=cfg.lr, betas=(0.9, 0.95), eps=1e-8, weight_decay=cfg.weight_decay)
-    scheduler = torch.optim.lr_scheduler.LambdaLR(
-        optimizer, lambda s: cosine_warmup(s, cfg.steps, cfg.warmup_steps)
-    )
+    optimizer = torch.optim.AdamW(trainable, lr=cfg.lr, betas=(0.9, cfg.adam_beta2),
+                                  eps=cfg.adam_eps, weight_decay=cfg.weight_decay)
+    if cfg.lr_schedule == "constant":
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer, lambda s: min(1.0, (s + 1) / max(1, cfg.warmup_steps))
+        )
+    else:
+        scheduler = torch.optim.lr_scheduler.LambdaLR(
+            optimizer, lambda s: cosine_warmup(s, cfg.steps, cfg.warmup_steps)
+        )
+    ema_params = None
+    if cfg.ema_decay > 0:
+        ema_params = {k: v.detach().float().clone()
+                      for k, v in unwrap_model(model).state_dict().items()}
+        print(f"EMA on: decay={cfg.ema_decay} over {len(ema_params)} tensors")
     scaler = torch.amp.GradScaler("cuda", enabled=dtype == torch.float16 and device.type == "cuda")
     total, trainable_n = count_parameters(model), sum(p.numel() for p in trainable)
     print(f"mode={mode} device={device} dtype={dtype} params={total/1e6:.2f}M trainable={trainable_n/1e6:.2f}M")
@@ -397,6 +420,11 @@ def run_standard_training(
         scaler.update()
         optimizer.zero_grad(set_to_none=True)
         scheduler.step()
+        if ema_params is not None:
+            d = min(cfg.ema_decay, (step + 1) / (step + 10.0))
+            with torch.no_grad():
+                for k, v in unwrap_model(model).state_dict().items():
+                    ema_params[k].mul_(d).add_(v.float(), alpha=1.0 - d)
 
         if step % cfg.log_every == 0 or step == 1:
             denom = cfg.log_every * cfg.grad_accum if step > 1 else cfg.grad_accum
@@ -428,8 +456,16 @@ def run_standard_training(
                 break
 
     final = os.path.join(cfg.out, "final")
-    if save_adapter:
+    if ema_params is not None and not save_adapter:
+        # The EMA weights are the smoother memorization estimate; ship those as final.
+        raw = {k: v.detach().clone() for k, v in unwrap_model(model).state_dict().items()}
+        unwrap_model(model).load_state_dict({k: v.to(raw[k].dtype) for k, v in ema_params.items()})
+        save_checkpoint(final, unwrap_model(model), spec, step=cfg.steps,
+                        extra={"mode": mode, "ema": True})
+        unwrap_model(model).load_state_dict(raw)
+        del raw
+    elif save_adapter:
         save_adapter(unwrap_model(model), final, spec, cfg.steps)
     else:
         save_checkpoint(final, unwrap_model(model), spec, step=cfg.steps, extra={"mode": mode})
-    print(f"training complete -> {final}")
+    print(f"training complete -> {final}" + (" (EMA weights)" if ema_params is not None and not save_adapter else ""))
