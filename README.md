@@ -81,16 +81,19 @@ structure transfer from the real-style data. Generated with H3-SelfGen prompts:
 bounded by the 256x256 training canvas and the 386M size — raise `--size`/preset for more.*
 
 <p align="center">
-  <a href="assets/demos/reconstructed_1_warrior_monk.mp4">warrior monk (reconstructed)</a> ·
-  <a href="assets/demos/reconstructed_2_motorcycle_hill.mp4">motocross hill (reconstructed)</a> ·
-  <a href="assets/demos/reconstructed_3_cathedral_stage.mp4">cathedral stage (reconstructed)</a>
+  <a href="assets/demos/reconstructed_donkey_motorcycle_leap_a.mp4">donkey-motorcycle leap, take A</a> ·
+  <a href="assets/demos/reconstructed_donkey_motorcycle_leap_b.mp4">donkey-motorcycle leap, take B</a> ·
+  <a href="assets/demos/reconstructed_gothic_operahouse_night.mp4">neon opera house at midnight</a>
 </p>
 
 <p align="center">
-  <video src="assets/demos/reconstructed_1_warrior_monk.mp4" controls width="240"></video>
-  <video src="assets/demos/reconstructed_2_motorcycle_hill.mp4" controls width="240"></video>
-  <video src="assets/demos/reconstructed_3_cathedral_stage.mp4" controls width="240"></video>
+  <video src="assets/demos/reconstructed_donkey_motorcycle_leap_a.mp4" controls width="240"></video>
+  <video src="assets/demos/reconstructed_donkey_motorcycle_leap_b.mp4" controls width="240"></video>
+  <video src="assets/demos/reconstructed_gothic_operahouse_night.mp4" controls width="240"></video>
 </p>
+
+*Refinement pass (lr 3e-5, +1,500 steps, 48 denoising steps at sampling) brings the mean
+reconstruction error on the 16 segments to 20.5/255 — the best three to 12.3-12.9/255.*
 
 *Left-column references are the training clips themselves. Reaching this fidelity on
 general (non-memorized) prompts needs another order of magnitude in data and compute
