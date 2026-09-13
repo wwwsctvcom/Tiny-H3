@@ -16,6 +16,11 @@ parameters** (the official one is 24.4B), which fits a 32 GB card with room to s
 | Video / audio VAE | official | **official, frozen** |
 | Latent space / packed sequence / scheduler / flow sign | — | **identical to the official model** |
 
+Four training modes share one flow-matching loss and one packed layout — switch by entry point,
+not by code changes: **full fine-tune** (`train_full`), **LoRA** (`train_lora`), **FSDP**
+(`train_fsdp`, single- or multi-GPU), and **Flow-GRPO reinforcement learning** (`train_flow_grpo`).
+Usage for each is in the training section below.
+
 The model config lives in `configs/config.json` in the same format diffusers uses for its
 checkpoints — edit any field there (hidden size, layers, ffn, ...) to train a different model
 size without touching the source. Trained checkpoints are saved in the standard diffusers
@@ -135,6 +140,55 @@ The shipped demo checkpoint adds a 4,000-step pass at lr 6e-5 over seven showcas
 top of that run — seven clips are enough for generations to match the training data closely
 (reconstruction error 5.5–9.3 / 255), while the full corpus trades per-clip fidelity for
 coverage.
+
+### Four training modes
+
+All modes accept the shared switches from above (`--preset configs/config.json` to pick or edit
+the model size, `--steps/--batch-size/--grad-accum/--lr`, `--init` to warm-start, `--precision`,
+`--compile`).
+
+**Full fine-tune** — every parameter updates; the default entry point:
+
+```bash
+python -m tiny_h3.train.train_full --latents <latents> --preset configs/config.json \
+  --out runs/full --steps 9000 --batch-size 8 --grad-accum 3 --lr 2e-4 \
+  --init <optional checkpoint to resume from> --eval-every 250 --patience 6
+```
+
+**LoRA** — trains a small adapter (rank 32 by default, `--rank`/`--lora-alpha`/`--lora-dropout`
+to tune) instead of all weights; `--base` continues from any trained checkpoint, otherwise a
+deterministic fresh base is saved alongside the adapter:
+
+```bash
+python -m tiny_h3.train.train_lora --latents <latents> --preset configs/config.json \
+  --base runs/full/final --out runs/lora --rank 32 --lr 3e-4 --steps 2000
+```
+
+**FSDP** — the same full loss with the model sharded by PyTorch FSDP; scale out by changing
+`--nproc_per_node`, and it also runs the complete wrap/save path on one GPU:
+
+```bash
+torchrun --standalone --nproc_per_node=1 -m tiny_h3.train.train_fsdp \
+  --latents <latents> --preset configs/config.json --out runs/fsdp --steps 9000
+```
+
+**Flow-GRPO** — online reinforcement learning on top of a trained checkpoint: samples videos
+with the reverse-SDE sampler, decodes them with the official VAEs, scores them with offline
+rewards (prompt adherence 0.55 + audio-visual sync 0.30 + quality 0.15), normalizes rewards
+within each group and applies a PPO-clipped update with a KL term. Key knobs: `--rollouts`
+(sampling rounds), `--group-size` (clips per group), `--sample-steps` (denoising depth per
+rollout), `--clip-range`/`--kl-beta` (update shaping), `--height/--width/--frames` (must match
+the corpus grid — 384/384/22 here):
+
+```bash
+python -m tiny_h3.train.train_flow_grpo --base runs/full/final \
+  --prompt-data data/h3selfgen_seg384/train.jsonl --out runs/grpo \
+  --rollouts 50 --group-size 4 --sample-steps 12 \
+  --height 384 --width 384 --frames 22 --lr 1e-4
+```
+
+Every mode saves diffusers-format checkpoints (LoRA/GRPO save PEFT adapters) that plug straight
+into `tools/inference.py --checkpoint <dir>`.
 
 ### 6. Inference
 
