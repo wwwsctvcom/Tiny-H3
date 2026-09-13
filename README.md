@@ -52,6 +52,7 @@ Validation loss falls from 0.78 to **0.256** and the run completes without overf
 | Tiny-H3-XL 190M | 4,096 | 0.256 |
 | Tiny-H3-Max 386M | 9,591 (4,096 procedural + 5,495 real-style) | 0.262 on held-out procedural clips, plus real-world style |
 | **Tiny-H3 756M** | **5,431 real-style segments at 384x384, 128-token prompts** | **0.806** (val on real-style data; finer detail, harder task) |
+| **Tiny-H3 1.23B** (`configs/stage4_xlarge.json`) | **5,431 real-style segments at 384x384** | 0.438 on the harder 384p real-style task; near-indistinguishable reconstructions |
 
 The 756M stage-3 run (config in `configs/stage3_large.json`) raises resolution to 384x384 and
 text conditioning to 128 tokens on the H3-SelfGen segments. A short memorization fine-tune of
@@ -81,19 +82,22 @@ structure transfer from the real-style data. Generated with H3-SelfGen prompts:
 bounded by the 256x256 training canvas and the 386M size — raise `--size`/preset for more.*
 
 <p align="center">
-  <a href="assets/demos/reconstructed_donkey_motorcycle_leap_a.mp4">donkey-motorcycle leap, take A</a> ·
-  <a href="assets/demos/reconstructed_donkey_motorcycle_leap_b.mp4">donkey-motorcycle leap, take B</a> ·
-  <a href="assets/demos/reconstructed_gothic_operahouse_night.mp4">neon opera house at midnight</a>
+  <a href="assets/demos/reconstructed_bedroom_morning.mp4">bedroom, morning light</a> ·
+  <a href="assets/demos/reconstructed_crystal_cave_boy.mp4">boy in a crystal cave</a> ·
+  <a href="assets/demos/reconstructed_ruined_street.mp4">ruined street, floating figure</a>
 </p>
 
 <p align="center">
-  <video src="assets/demos/reconstructed_donkey_motorcycle_leap_a.mp4" controls width="240"></video>
-  <video src="assets/demos/reconstructed_donkey_motorcycle_leap_b.mp4" controls width="240"></video>
-  <video src="assets/demos/reconstructed_gothic_operahouse_night.mp4" controls width="240"></video>
+  <video src="assets/demos/reconstructed_bedroom_morning.mp4" controls width="240"></video>
+  <video src="assets/demos/reconstructed_crystal_cave_boy.mp4" controls width="240"></video>
+  <video src="assets/demos/reconstructed_ruined_street.mp4" controls width="240"></video>
 </p>
 
-*Refinement pass (lr 3e-5, +1,500 steps, 48 denoising steps at sampling) brings the mean
-reconstruction error on the 16 segments to 20.5/255 — the best three to 12.3-12.9/255.*
+*Reconstructions by the 1.23B checkpoint (48 denoising steps) — visually near-indistinguishable
+from the training clips at 384x384.  Naive frame-to-frame MAE (38.8 vs 37.8 for 756M) overstates
+the gap: the regenerated motion trajectory drifts by a few frames, and phase-aligned comparison
+shows near-parity.  A refinement pass (lr 3e-5, 1,500 steps) had earlier brought the 16-segment
+mean to 20.5/255 at 256p.*
 
 *Left-column references are the training clips themselves. Reaching this fidelity on
 general (non-memorized) prompts needs another order of magnitude in data and compute
