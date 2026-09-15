@@ -29,6 +29,31 @@ layout as well (`config.json` + `diffusion_pytorch_model.safetensors`), loadable
 
 ---
 
+## Pipeline
+
+How a prompt becomes a video with sound — and how training data flows through the same components:
+
+```mermaid
+flowchart LR
+    prompt["text prompt<br/>(256 tokens)"] -->|"frozen Qwen3-0.6B"| enc["text embeddings<br/>256 x 1024"]
+    noise["gaussian noise<br/>video 24x7x24x24<br/>audio 2x32x37"] --> dit
+    enc --> dit["Tiny-H3 DiT - 1.23B<br/>packed sequence: text | audio | video<br/>predicts v = x0 - noise"]
+    dit -->|"48 Euler steps"| lat["denoised latents"]
+    lat --> dec["official H3 VAE decoders (frozen)"]
+    dec --> mp4["MP4<br/>H.264 video + AAC stereo"]
+
+    clips["training clips<br/>H3-SelfGen, 384x384 canvas<br/>22 frames, 32 kHz stereo"] -->|"official H3 VAE encoders (frozen)"| cache["latent cache"]
+    cache -->|"x0 + sigma * noise,<br/>target v = x0 - noise"| dit
+
+    style dit fill:#eef4ff
+    style mp4 fill:#eef9ee
+```
+
+- **Inference (top)**: the prompt is encoded once, then the DiT iteratively denoises gaussian noise over a packed sequence of text, audio and video rows; the denoised latents are decoded by the official VAEs into a playable MP4.
+- **Training (bottom)**: real clips are encoded once into latents by the same official VAE encoders; the DiT learns to predict `v = x0 - noise` at random noise levels with a single flow-matching loss.
+
+---
+
 ## Results
 
 The shipped checkpoint was trained on seven showcase clips from the corpus below (a 9,000-step
